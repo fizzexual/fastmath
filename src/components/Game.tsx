@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { generateNext, tierForLevel, tierOpsLabel } from "../lib/problems";
+import { generateNext, rangeForLevel, tierForLevel, tierOpsLabel } from "../lib/problems";
 import type { Problem, SessionResult, Solve } from "../lib/types";
 
 interface Props {
@@ -110,6 +110,7 @@ export function Game({ timerLimit, startLevel, onFinish }: Props) {
   const t = tierForLevel(currentLevel);
   const tierName = t.label.split(" · ")[0];
   const opsLabel = tierOpsLabel(currentLevel);
+  const liveRange = rangeForLevel(currentLevel);
 
   return (
     <div className="game">
@@ -128,7 +129,7 @@ export function Game({ timerLimit, startLevel, onFinish }: Props) {
           )}
           <div className="stat">
             <span className="stat-value accent">{tierName}</span>
-            <span className="stat-label">{opsLabel} · to {t.maxValue}</span>
+            <span className="stat-label">{opsLabel} · to {liveRange}</span>
           </div>
         </div>
         <div className="stats-right">

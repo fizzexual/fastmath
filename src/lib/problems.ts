@@ -59,9 +59,27 @@ export function tierLabel(level: number): string {
 export function tierOpsLabel(level: number): string {
   return tierForLevel(level).ops.map(opSymbol).join(" ");
 }
+
+/** Live range for the current level. Lerps between the previous tier's
+ *  ceiling and the current tier's ceiling based on how deep you are into
+ *  the current tier, so difficulty climbs smoothly even inside a tier. */
+export function rangeForLevel(level: number): number {
+  const idx = tierIndex(level);
+  const tier = TIERS[idx];
+  const baseMax = idx > 0
+    ? TIERS[idx - 1].maxValue
+    : Math.max(4, Math.floor(tier.maxValue / 3));
+  const nextFrom = idx < TIERS.length - 1
+    ? TIERS[idx + 1].from
+    : tier.from + 50; // gentle continued growth past the last named tier
+  const tierLen = Math.max(1, nextFrom - tier.from);
+  const progress = Math.min(1, Math.max(0, (level - tier.from) / tierLen));
+  return Math.max(4, Math.floor(baseMax + (tier.maxValue - baseMax) * progress));
+}
+
 export function settingsForLevel(level: number): ProblemSettings {
   const t = tierForLevel(level);
-  return { ops: t.ops, maxValue: t.maxValue };
+  return { ops: t.ops, maxValue: rangeForLevel(level) };
 }
 
 /** Human-readable symbol for an op (used in the HUD subtitle). */
