@@ -6,7 +6,9 @@ export type Operation =
   | "cbrt"   // ∛x
   | "pow"    // a^b for small a, b
   | "mod"    // a mod b
-  | "log";   // log_b(a) where a is a clean power
+  | "log"    // log_b(a) where a is a clean power
+  | "expr"   // composite: a op b op c with proper precedence (and sometimes parens)
+  | "pct";   // p% of base, picked so answer is integer
 
 export interface Problem {
   op: Operation;
