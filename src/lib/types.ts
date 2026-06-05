@@ -5,20 +5,11 @@ export interface Problem {
   b: number;
   op: Operation;
   answer: number;
-  display: string;     // "47 + 23"
-}
-
-export type ModeKind = "sprint" | "endless" | "target";
-
-export interface Mode {
-  kind: ModeKind;
-  /** Sprint: total seconds. Target: number of problems to solve. Endless: ignored. */
-  goal: number;
+  display: string;
 }
 
 export interface Settings {
   ops: Operation[];
-  /** Upper bound for the operand range. Multiplication/division clamp themselves. */
   maxValue: number;
 }
 
@@ -28,11 +19,11 @@ export interface Solve {
 }
 
 export interface SessionResult {
-  mode: Mode;
-  settings: Settings;
   solves: Solve[];
   totalMs: number;
   finishedAt: number;
+  timerLimit: number; // 0 = no limit, else seconds
+  reason: "time" | "manual";
 }
 
 export type Theme = "light" | "dark";

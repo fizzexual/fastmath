@@ -5,11 +5,16 @@ interface Props {
   open: boolean;
   result: SessionResult | null;
   newBest: boolean;
-  onBackToMenu: () => void;
   onPlayAgain: () => void;
 }
 
-export function EndModal({ open, result, newBest, onBackToMenu, onPlayAgain }: Props) {
+function fmtTime(sec: number): string {
+  if (sec < 60) return `${sec}s`;
+  const m = Math.floor(sec / 60), s = sec % 60;
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+export function EndModal({ open, result, newBest, onPlayAgain }: Props) {
   if (!result) return null;
   const solved = result.solves.length;
   const totalSec = result.totalMs / 1000;
@@ -18,13 +23,9 @@ export function EndModal({ open, result, newBest, onBackToMenu, onPlayAgain }: P
   const ppm = totalSec > 0 ? Math.round((solved * 60) / totalSec) : 0;
 
   const headline =
-    result.mode.kind === "target"
-      ? solved >= result.mode.goal
-        ? `Reached ${result.mode.goal} in ${totalSec.toFixed(1)}s.`
-        : `Stopped after ${solved} of ${result.mode.goal}.`
-      : result.mode.kind === "sprint"
-        ? `${solved} solved in ${result.mode.goal}s.`
-        : `${solved} solved in ${totalSec.toFixed(1)}s.`;
+    result.reason === "time"
+      ? `${solved} solved in ${fmtTime(result.timerLimit)}`
+      : `${solved} solved in ${totalSec.toFixed(1)}s`;
 
   return (
     <AnimatePresence>
@@ -56,7 +57,7 @@ export function EndModal({ open, result, newBest, onBackToMenu, onPlayAgain }: P
             )}
             <h2 className="end-headline">{headline}</h2>
             <p className="end-sub">
-              {result.settings.ops.join(" ")} · range 1–{result.settings.maxValue}
+              {result.reason === "time" ? "Time's up." : "Run ended."}
             </p>
 
             <div className="end-grid">
@@ -67,7 +68,6 @@ export function EndModal({ open, result, newBest, onBackToMenu, onPlayAgain }: P
             </div>
 
             <div className="modal-actions">
-              <button className="ghost" onClick={onBackToMenu}>Menu</button>
               <button className="primary" onClick={onPlayAgain}>Play again</button>
             </div>
           </motion.div>

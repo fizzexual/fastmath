@@ -1,13 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { generateNext } from "../lib/problems";
-import type { Mode, Problem, SessionResult, Settings, Solve } from "../lib/types";
+import { generateNext, settingsForLevel, tierLabel } from "../lib/problems";
+import type { Problem, SessionResult, Solve } from "../lib/types";
 
 interface Props {
-  mode: Mode;
-  settings: Settings;
+  timerLimit: number;          // seconds; 0 = unlimited
   onFinish: (r: SessionResult) => void;
-  onAbort: () => void;
 }
 
 function fmtTime(sec: number): string {
@@ -16,8 +14,8 @@ function fmtTime(sec: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-export function Game({ mode, settings, onFinish, onAbort }: Props) {
-  const [problem, setProblem] = useState<Problem>(() => generateNext(null, settings));
+export function Game({ timerLimit, onFinish }: Props) {
+  const [problem, setProblem] = useState<Problem>(() => generateNext(null, 0));
   const [input, setInput] = useState("");
   const [solves, setSolves] = useState<Solve[]>([]);
   const [flash, setFlash] = useState<"good" | "bad" | null>(null);
@@ -25,39 +23,49 @@ export function Game({ mode, settings, onFinish, onAbort }: Props) {
   const startedAt = useRef<number>(Date.now());
   const problemStart = useRef<number>(Date.now());
   const inputRef = useRef<HTMLInputElement>(null);
+  const finishedRef = useRef<boolean>(false);
 
-  // Focus the input on mount and after every advance.
   useEffect(() => { inputRef.current?.focus(); }, [problem]);
 
-  // 100ms tick for the timer so stats feel live.
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 100);
     return () => clearInterval(id);
   }, []);
 
-  // End-of-session conditions.
+  // Time-limit expiry.
   useEffect(() => {
-    if (mode.kind === "sprint") {
-      const elapsed = (now - startedAt.current) / 1000;
-      if (elapsed >= mode.goal) end();
-    } else if (mode.kind === "target") {
-      if (solves.length >= mode.goal) end();
-    }
+    if (timerLimit <= 0 || finishedRef.current) return;
+    const elapsed = (now - startedAt.current) / 1000;
+    if (elapsed >= timerLimit) end("time");
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [now, solves.length, mode.kind, mode.goal]);
+  }, [now, timerLimit]);
 
-  function end() {
-    const totalMs = Date.now() - startedAt.current;
+  function end(reason: "time" | "manual") {
+    if (finishedRef.current) return;
+    finishedRef.current = true;
     onFinish({
-      mode,
-      settings,
       solves,
-      totalMs,
+      totalMs: Date.now() - startedAt.current,
       finishedAt: Date.now(),
+      timerLimit,
+      reason,
     });
   }
 
-  function handleSubmit(value: string) {
+  function advance() {
+    const elapsed = Date.now() - problemStart.current;
+    const nextSolves = [...solves, { problem, responseMs: elapsed }];
+    setSolves(nextSolves);
+    setFlash("good");
+    setTimeout(() => setFlash(null), 220);
+    const nextLevel = nextSolves.length;
+    const next = generateNext(problem, nextLevel);
+    setProblem(next);
+    setInput("");
+    problemStart.current = Date.now();
+  }
+
+  function tryAnswer(value: string) {
     const n = parseInt(value, 10);
     if (Number.isNaN(n)) return;
     if (n !== problem.answer) {
@@ -68,29 +76,14 @@ export function Game({ mode, settings, onFinish, onAbort }: Props) {
     advance();
   }
 
-  function advance() {
-    const elapsed = Date.now() - problemStart.current;
-    setSolves((prev) => [...prev, { problem, responseMs: elapsed }]);
-    setFlash("good");
-    setTimeout(() => setFlash(null), 220);
-    const next = generateNext(problem, settings);
-    setProblem(next);
-    setInput("");
-    problemStart.current = Date.now();
-  }
-
   function onChange(e: React.ChangeEvent<HTMLInputElement>) {
     const raw = e.target.value;
     if (!/^-?\d*$/.test(raw)) return;
     setInput(raw);
-    // Auto-advance on exact match. Skip empty string and lone "-".
     if (raw !== "" && raw !== "-") {
       const n = parseInt(raw, 10);
       if (!Number.isNaN(n) && n === problem.answer) {
-        // Slight delay to let the user see the match.
-        requestAnimationFrame(() => {
-          advance();
-        });
+        requestAnimationFrame(() => advance());
       }
     }
   }
@@ -98,44 +91,41 @@ export function Game({ mode, settings, onFinish, onAbort }: Props) {
   function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Enter") {
       e.preventDefault();
-      handleSubmit(input);
+      tryAnswer(input);
     } else if (e.key === "Escape") {
       e.preventDefault();
-      onAbort();
+      end("manual");
     }
   }
 
-  // Live stats
   const solved = solves.length;
   const totalMs = solved ? solves.reduce((s, x) => s + x.responseMs, 0) : 0;
   const avgMs = solved ? Math.round(totalMs / solved) : 0;
   const elapsedSec = Math.floor((now - startedAt.current) / 1000);
-  const remaining = mode.kind === "sprint" ? Math.max(0, mode.goal - elapsedSec) : null;
-  const targetLeft = mode.kind === "target" ? Math.max(0, mode.goal - solved) : null;
+  const remaining = timerLimit > 0 ? Math.max(0, timerLimit - elapsedSec) : null;
   const ppm = elapsedSec > 0 ? Math.round((solved * 60) / Math.max(1, elapsedSec)) : 0;
+  const tier = tierLabel(solved);
+  const tierSettings = settingsForLevel(solved);
 
   return (
     <div className="game">
       <div className="stats">
         <div className="stats-left">
-          {remaining != null && (
+          {remaining != null ? (
             <div className="stat">
               <span className={"stat-value" + (remaining <= 10 ? " bad" : "")}>{fmtTime(remaining)}</span>
               <span className="stat-label">remaining</span>
             </div>
-          )}
-          {remaining == null && (
+          ) : (
             <div className="stat">
               <span className="stat-value">{fmtTime(elapsedSec)}</span>
               <span className="stat-label">time</span>
             </div>
           )}
-          {targetLeft != null && (
-            <div className="stat">
-              <span className="stat-value accent">{targetLeft}</span>
-              <span className="stat-label">to go</span>
-            </div>
-          )}
+          <div className="stat">
+            <span className="stat-value accent">{tier}</span>
+            <span className="stat-label">{tierSettings.ops.join(" ")} · to {tierSettings.maxValue}</span>
+          </div>
         </div>
         <div className="stats-right">
           <div className="stat">
@@ -180,10 +170,8 @@ export function Game({ mode, settings, onFinish, onAbort }: Props) {
           aria-label="Answer"
         />
         <div className="hint">
-          Type the answer. <kbd>Enter</kbd> to submit · <kbd>Esc</kbd> to quit
+          Type the answer · <kbd>Enter</kbd> submits · <kbd>Esc</kbd> ends run
         </div>
-
-        <button className="ghost small give-up-btn" onClick={onAbort}>Give up</button>
       </div>
     </div>
   );

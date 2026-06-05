@@ -1,15 +1,8 @@
-import type { Mode, SessionResult, Settings, Theme } from "./types";
+import type { Theme } from "./types";
 
-const THEME_KEY     = "fm-theme";
-const SETTINGS_KEY  = "fm-settings";
-const HISTORY_KEY   = "fm-history";
-const BEST_KEY      = "fm-best";
-const HISTORY_MAX   = 12;
-
-export const DEFAULT_SETTINGS: Settings = {
-  ops: ["+", "-", "*"],
-  maxValue: 20,
-};
+const THEME_KEY  = "fm-theme";
+const BEST_KEY   = "fm-best";        // best solved count, all-time
+const TIMER_KEY  = "fm-timer-limit"; // last selected timer (seconds)
 
 function safeGet<T>(key: string, fallback: T): T {
   try {
@@ -21,12 +14,6 @@ function safeSet(key: string, value: unknown): void {
   try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
 }
 
-export function loadSettings(): Settings {
-  const s = safeGet<Partial<Settings>>(SETTINGS_KEY, {});
-  return { ...DEFAULT_SETTINGS, ...s };
-}
-export function saveSettings(s: Settings): void { safeSet(SETTINGS_KEY, s); }
-
 export function loadTheme(): Theme {
   const t = safeGet<string | null>(THEME_KEY, null);
   if (t === "light" || t === "dark") return t;
@@ -36,36 +23,16 @@ export function loadTheme(): Theme {
 }
 export function saveTheme(t: Theme): void { safeSet(THEME_KEY, t); }
 
-export function loadHistory(): SessionResult[] {
-  return safeGet<SessionResult[]>(HISTORY_KEY, []);
+export function loadBest(): number {
+  return safeGet<number>(BEST_KEY, 0);
 }
-export function recordSession(s: SessionResult): SessionResult[] {
-  const h = loadHistory();
-  h.unshift(s);
-  while (h.length > HISTORY_MAX) h.pop();
-  safeSet(HISTORY_KEY, h);
-  return h;
-}
-export function clearHistory(): void {
-  try { localStorage.removeItem(HISTORY_KEY); } catch {}
-}
-
-/** Best score per mode-key (e.g. "sprint:30" => 18 problems solved). */
-type Bests = Record<string, number>;
-export function bestKey(mode: Mode): string {
-  return `${mode.kind}:${mode.goal}`;
-}
-export function getBest(mode: Mode): number | null {
-  const b = safeGet<Bests>(BEST_KEY, {});
-  return b[bestKey(mode)] ?? null;
-}
-export function setBestIfHigher(mode: Mode, score: number): boolean {
-  const b = safeGet<Bests>(BEST_KEY, {});
-  const k = bestKey(mode);
-  if (b[k] == null || score > b[k]) {
-    b[k] = score;
-    safeSet(BEST_KEY, b);
-    return true;
-  }
+export function setBestIfHigher(n: number): boolean {
+  const cur = loadBest();
+  if (n > cur) { safeSet(BEST_KEY, n); return true; }
   return false;
 }
+
+export function loadTimerLimit(): number {
+  return safeGet<number>(TIMER_KEY, 0);
+}
+export function saveTimerLimit(n: number): void { safeSet(TIMER_KEY, n); }
