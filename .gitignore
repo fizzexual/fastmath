@@ -1,0 +1,9 @@
+node_modules/
+dist/
+*.local
+.vite/
+*.tsbuildinfo
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
