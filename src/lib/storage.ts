@@ -1,8 +1,9 @@
 import type { Theme } from "./types";
 
 const THEME_KEY  = "fm-theme";
-const BEST_KEY   = "fm-best";        // best solved count, all-time
-const TIMER_KEY  = "fm-timer-limit"; // last selected timer (seconds)
+const BEST_KEY   = "fm-best";
+const TIMER_KEY  = "fm-timer-limit";
+const START_KEY  = "fm-start-level";
 
 function safeGet<T>(key: string, fallback: T): T {
   try {
@@ -23,16 +24,15 @@ export function loadTheme(): Theme {
 }
 export function saveTheme(t: Theme): void { safeSet(THEME_KEY, t); }
 
-export function loadBest(): number {
-  return safeGet<number>(BEST_KEY, 0);
-}
+export function loadBest(): number { return safeGet<number>(BEST_KEY, 0); }
 export function setBestIfHigher(n: number): boolean {
   const cur = loadBest();
   if (n > cur) { safeSet(BEST_KEY, n); return true; }
   return false;
 }
 
-export function loadTimerLimit(): number {
-  return safeGet<number>(TIMER_KEY, 0);
-}
+export function loadTimerLimit(): number { return safeGet<number>(TIMER_KEY, 0); }
 export function saveTimerLimit(n: number): void { safeSet(TIMER_KEY, n); }
+
+export function loadStartLevel(): number { return safeGet<number>(START_KEY, 0); }
+export function saveStartLevel(n: number): void { safeSet(START_KEY, n); }

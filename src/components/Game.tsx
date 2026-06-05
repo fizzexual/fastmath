@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { generateNext, settingsForLevel, tierLabel } from "../lib/problems";
+import { generateNext, tierForLevel, tierOpsLabel } from "../lib/problems";
 import type { Problem, SessionResult, Solve } from "../lib/types";
 
 interface Props {
   timerLimit: number;          // seconds; 0 = unlimited
+  startLevel: number;          // starting tier offset (0 = Tier 1)
   onFinish: (r: SessionResult) => void;
 }
 
@@ -14,8 +15,8 @@ function fmtTime(sec: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-export function Game({ timerLimit, onFinish }: Props) {
-  const [problem, setProblem] = useState<Problem>(() => generateNext(null, 0));
+export function Game({ timerLimit, startLevel, onFinish }: Props) {
+  const [problem, setProblem] = useState<Problem>(() => generateNext(null, startLevel));
   const [input, setInput] = useState("");
   const [solves, setSolves] = useState<Solve[]>([]);
   const [flash, setFlash] = useState<"good" | "bad" | null>(null);
@@ -48,6 +49,7 @@ export function Game({ timerLimit, onFinish }: Props) {
       totalMs: Date.now() - startedAt.current,
       finishedAt: Date.now(),
       timerLimit,
+      startLevel,
       reason,
     });
   }
@@ -58,7 +60,7 @@ export function Game({ timerLimit, onFinish }: Props) {
     setSolves(nextSolves);
     setFlash("good");
     setTimeout(() => setFlash(null), 220);
-    const nextLevel = nextSolves.length;
+    const nextLevel = startLevel + nextSolves.length;
     const next = generateNext(problem, nextLevel);
     setProblem(next);
     setInput("");
@@ -104,8 +106,10 @@ export function Game({ timerLimit, onFinish }: Props) {
   const elapsedSec = Math.floor((now - startedAt.current) / 1000);
   const remaining = timerLimit > 0 ? Math.max(0, timerLimit - elapsedSec) : null;
   const ppm = elapsedSec > 0 ? Math.round((solved * 60) / Math.max(1, elapsedSec)) : 0;
-  const tier = tierLabel(solved);
-  const tierSettings = settingsForLevel(solved);
+  const currentLevel = startLevel + solved;
+  const t = tierForLevel(currentLevel);
+  const tierName = t.label.split(" · ")[0];
+  const opsLabel = tierOpsLabel(currentLevel);
 
   return (
     <div className="game">
@@ -123,8 +127,8 @@ export function Game({ timerLimit, onFinish }: Props) {
             </div>
           )}
           <div className="stat">
-            <span className="stat-value accent">{tier}</span>
-            <span className="stat-label">{tierSettings.ops.join(" ")} · to {tierSettings.maxValue}</span>
+            <span className="stat-value accent">{tierName}</span>
+            <span className="stat-label">{opsLabel} · to {t.maxValue}</span>
           </div>
         </div>
         <div className="stats-right">
