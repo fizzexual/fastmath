@@ -1,4 +1,4 @@
-# FastMath
+# FastMath 🍂
 
 Brain-training drill for fast mental math. One problem at a time. Type the
 answer — auto-advances on the exact match. Difficulty escalates as you go.
@@ -8,6 +8,13 @@ answer — auto-advances on the exact match. Difficulty escalates as you go.
     ───────
         ?
 ```
+
+## About
+
+FastMath is a small single-page app for practising mental arithmetic against yourself: an endless run
+of integer problems that get harder through 14 tiers, from addition up to powers, roots and logarithms.
+It is for anyone who wants a quick daily calculation drill. It runs fully in the browser with no
+backend; there is no hosted version yet, so run it locally.
 
 ## Run
 
